@@ -9,7 +9,103 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="patina.css?v=3" />
+<link rel="stylesheet" href="patina.css" />
+
+<style>
+  /* Download button styles layered on top of the existing patina gallery */
+  .card{ position:relative; }
+  .card .actions{
+    position:absolute;
+    top: 10px; right: 10px;
+    display:flex; gap: 6px;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+    z-index: 200;
+  }
+  .card:hover .actions{ opacity: 1; }
+  .card .actions button{
+    background: rgba(12,10,8,0.82);
+    color: #e8dfd2;
+    border: 1px solid rgba(232,223,210,0.25);
+    backdrop-filter: blur(8px);
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 7px 11px;
+    cursor: pointer;
+  }
+  .card .actions button:hover{ border-color: #d6a56e; color: #d6a56e; }
+  .card .actions button:disabled{ opacity: 0.6; cursor: wait; }
+
+  /* Offscreen render stage used for 1920x1200 exports */
+  #export-stage{
+    position: fixed;
+    left: -99999px;
+    top: 0;
+    width: 1920px;
+    height: 1200px;
+    pointer-events: none;
+  }
+  #export-stage .bg{
+    width: 1920px;
+    height: 1200px;
+    aspect-ratio: auto;
+  }
+
+  .toast{
+    position: fixed;
+    left: 50%; bottom: 32px;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(12,10,8,0.96);
+    color: #e8dfd2;
+    border: 1px solid rgba(232,223,210,0.2);
+    padding: 12px 18px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    z-index: 3000;
+    opacity: 0;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    pointer-events: none;
+  }
+  .toast.show{ opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Download-all button in hero */
+  .hero .dl-all{
+    background: #d6a56e;
+    color: #1a140c;
+    border: none;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 12px 18px;
+    cursor: pointer;
+    align-self: flex-end;
+  }
+  .hero .dl-all:hover{ background: #e4b37a; }
+  .hero .dl-all:disabled{ opacity: 0.6; cursor: wait; }
+
+  /* Lightbox — add a download button in the corner */
+  .lightbox .dl-one{
+    position: absolute;
+    top: 24px; left: 28px;
+    background: #d6a56e;
+    color: #1a140c;
+    border: none;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 10px 18px;
+    cursor: pointer;
+  }
+  .lightbox .dl-one:hover{ background: #e4b37a; }
+</style>
 </head>
 
 <body>
@@ -20,75 +116,44 @@
   <header class="hero">
     <div>
       <h1>Preaching Backgrounds.</h1>
-      <div class="sub">A library of forty atmospheres for the main screen during the sermon. Every surface is built for patina — grain, warmth, vignette, paper. Top third is kept quiet for scripture overlay.</div>
+      <div class="sub">A library of atmospheres for the main screen during the sermon. Every surface is built for patina — grain, warmth, vignette, paper. Top third is kept quiet for scripture overlay. Hover any card to download a 1920×1200 PNG.</div>
     </div>
     <div class="meta">
       <div>RATIO<b>16 : 10</b></div>
-      <div>COUNT<b>40</b></div>
-      <div>FAMILIES<b>8</b></div>
+      <div>EXPORT<b>1920×1200 PNG</b></div>
+      <div>FAMILIES<b>9</b></div>
       <div>TEXT-SAFE<b>Top third</b></div>
     </div>
   </header>
 
-  <!-- Sections will be injected by JS for brevity -->
   <div id="library"></div>
 
 </div>
 
+<!-- Offscreen export stage -->
+<div id="export-stage"></div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
 <!-- ============= LIGHTBOX ============= -->
 <div class="lightbox" id="lightbox">
   <button class="close" id="lb-close">Close · Esc</button>
+  <button class="dl-one" id="lb-download">↓ Download PNG</button>
   <div class="frame" id="lb-frame"></div>
   <div class="caption" id="lb-caption"></div>
 </div>
 
-<!-- ============= TWEAKS PANEL ============= -->
-<div class="tweaks" id="tweaks">
-  <h3>Patina controls</h3>
-  <div class="row">
-    <label>Grain</label>
-    <input type="range" min="0" max="1" step="0.01" id="t-grain" />
-    <span id="v-grain">0.22</span>
-  </div>
-  <div class="row">
-    <label>Warmth</label>
-    <input type="range" min="0" max="0.5" step="0.01" id="t-warm" />
-    <span id="v-warm">0.14</span>
-  </div>
-  <div class="row">
-    <label>Vignette</label>
-    <input type="range" min="0" max="1" step="0.01" id="t-vign" />
-    <span id="v-vign">0.55</span>
-  </div>
-  <div class="row">
-    <label>Desat</label>
-    <input type="range" min="0" max="0.5" step="0.01" id="t-desat" />
-    <span id="v-desat">0.12</span>
-  </div>
-  <div class="row">
-    <label>Paper</label>
-    <input type="range" min="0" max="0.6" step="0.01" id="t-paper" />
-    <span id="v-paper">0.18</span>
-  </div>
-  <div class="toggle">
-    <span>Show text-safe zone</span>
-    <button id="t-textsafe">Off</button>
-  </div>
-  <div class="toggle" style="border-top:none; margin-top:4px;">
-    <span>Reset defaults</span>
-    <button id="t-reset">Reset</button>
-  </div>
-</div>
+<!-- html-to-image for PNG export -->
+<script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/dist/html-to-image.min.js"></script>
 
 <script>
 /* ======================================================
-   LIBRARY DATA — 40 entries grouped into 8 families.
-   Each class maps to CSS rules in patina.css.
+   LIBRARY DATA
    ====================================================== */
 const FAMILIES = [
   {
-    num: "01",
-    name: "Color fields",
+    num: "01", name: "Color fields",
     blurb: "Rothko-quiet. Single-hued meditations with the surface doing the work.",
     items: [
       { cls:"cf-ember",    name:"Ember",      palette:"Amber · Ox" },
@@ -99,8 +164,7 @@ const FAMILIES = [
     ]
   },
   {
-    num: "02",
-    name: "Painterly brushwork",
+    num: "02", name: "Painterly brushwork",
     blurb: "Hand-painted streaks, displacement-warped. For weight and intention.",
     items: [
       { cls:"pt-black-ink",      name:"Black Ink",     palette:"Soot · Umber" },
@@ -111,8 +175,7 @@ const FAMILIES = [
     ]
   },
   {
-    num: "03",
-    name: "Light & haze",
+    num: "03", name: "Light & haze",
     blurb: "Atmosphere — dusty sunlight, ember glow, bokeh through dust.",
     items: [
       { cls:"lh-dusty-sun",   name:"Dusty Sun",    palette:"Amber · Sable" },
@@ -123,8 +186,7 @@ const FAMILIES = [
     ]
   },
   {
-    num: "04",
-    name: "Paper & fresco",
+    num: "04", name: "Paper & fresco",
     blurb: "Ancient surfaces. Linen, parchment, hand-mixed pigment on plaster.",
     items: [
       { cls:"pf-parchment",       name:"Parchment",       palette:"Cream · Tan" },
@@ -135,8 +197,7 @@ const FAMILIES = [
     ]
   },
   {
-    num: "05",
-    name: "Mineral & stone",
+    num: "05", name: "Mineral & stone",
     blurb: "Heavy, physical surfaces. Concrete, marble, rust, slate, copper.",
     items: [
       { cls:"ms-concrete", name:"Concrete",     palette:"Ash · Iron" },
@@ -147,8 +208,7 @@ const FAMILIES = [
     ]
   },
   {
-    num: "06",
-    name: "Smoke, mist, dust",
+    num: "06", name: "Smoke, mist, dust",
     blurb: "Particles suspended. Incense, fog, dust drifting through a beam.",
     items: [
       { cls:"sm-charcoal-smoke",name:"Charcoal Smoke",palette:"Smoke · Pitch" },
@@ -166,20 +226,18 @@ const FAMILIES = [
     ]
   },
   {
-    num: "07",
-    name: "God-rays & cathedral light",
+    num: "07", name: "God-rays & cathedral light",
     blurb: "Shafts of light. The biggest, most dramatic moves.",
     items: [
-      { cls:"gr-cathedral",  name:"Cathedral", palette:"Gold · Stone" },
-      { cls:"gr-forest-light",name:"Forest Light",palette:"Moss · Sun" },
-      { cls:"gr-sunburst",   name:"Sunburst",  palette:"Sun · Ember" },
-      { cls:"gr-backlit-blue",name:"Backlit Blue",palette:"Ice · Steel" },
-      { cls:"lh-god-ray",    name:"God Ray II",palette:"Gold · Pitch" },
+      { cls:"gr-cathedral",   name:"Cathedral",    palette:"Gold · Stone" },
+      { cls:"gr-forest-light",name:"Forest Light", palette:"Moss · Sun" },
+      { cls:"gr-sunburst",    name:"Sunburst",     palette:"Sun · Ember" },
+      { cls:"gr-backlit-blue",name:"Backlit Blue", palette:"Ice · Steel" },
+      { cls:"lh-god-ray",     name:"God Ray II",   palette:"Gold · Pitch" },
     ]
   },
   {
-    num: "08",
-    name: "Landscape — abstract",
+    num: "08", name: "Landscape — abstract",
     blurb: "Horizons, water, mountains — dissolved to feeling.",
     items: [
       { cls:"la-horizon-dawn",  name:"Horizon Dawn",  palette:"Violet · Gold" },
@@ -197,8 +255,7 @@ const FAMILIES = [
     ]
   },
   {
-    num: "09",
-    name: "Aurora mesh",
+    num: "09", name: "Aurora mesh",
     blurb: "Soft cool-pastel blooms drifting across near-black. Painterly mesh gradient with heavy grain on top.",
     items: [
       { cls:"au-base au-polar",           name:"Polar",           palette:"Teal · Violet" },
@@ -215,7 +272,6 @@ const FAMILIES = [
   },
 ];
 
-/* Render a single bg element (reused in card + lightbox) */
 function bgEl(cls){
   const wrap = document.createElement('div');
   wrap.className = 'bg ' + cls;
@@ -232,14 +288,14 @@ function bgEl(cls){
   return wrap;
 }
 
-/* Render gallery */
 const lib = document.getElementById('library');
 let globalIndex = 0;
+const allItems = [];
 FAMILIES.forEach(fam => {
   const header = document.createElement('div');
   header.className = 'section-head';
   header.innerHTML = `
-    <div class="num">${fam.num} / 08</div>
+    <div class="num">${fam.num} / 09</div>
     <h2>${fam.name}</h2>
     <div class="blurb">${fam.blurb}</div>
   `;
@@ -247,16 +303,31 @@ FAMILIES.forEach(fam => {
 
   const grid = document.createElement('div');
   grid.className = 'grid';
-  fam.items.forEach((it, i) => {
+  fam.items.forEach(it => {
     globalIndex++;
+    const idx = globalIndex;
+    allItems.push({ ...it, idx });
     const card = document.createElement('div');
     card.className = 'card';
     card.appendChild(bgEl(it.cls));
+
+    // Actions
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    const dlBtn = document.createElement('button');
+    dlBtn.textContent = '↓ PNG';
+    dlBtn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      downloadOne(it, idx, dlBtn);
+    });
+    actions.appendChild(dlBtn);
+    card.appendChild(actions);
+
     const label = document.createElement('div');
     label.className = 'label';
-    label.innerHTML = `<span><b>${String(globalIndex).padStart(2,'0')}</b> &nbsp;${it.name}</span><span>${it.palette}</span>`;
+    label.innerHTML = `<span><b>${String(idx).padStart(2,'0')}</b> &nbsp;${it.name}</span><span>${it.palette}</span>`;
     card.appendChild(label);
-    card.addEventListener('click', () => openLightbox(it, globalIndex));
+    card.addEventListener('click', () => openLightbox(it, idx));
     grid.appendChild(card);
   });
   lib.appendChild(grid);
@@ -268,11 +339,17 @@ FAMILIES.forEach(fam => {
 const lightbox = document.getElementById('lightbox');
 const lbFrame = document.getElementById('lb-frame');
 const lbCaption = document.getElementById('lb-caption');
+const lbDl = document.getElementById('lb-download');
+let currentLbItem = null;
 document.getElementById('lb-close').onclick = closeLightbox;
 lightbox.addEventListener('click', (e) => { if(e.target === lightbox) closeLightbox(); });
 document.addEventListener('keydown', (e) => { if(e.key === 'Escape') closeLightbox(); });
+lbDl.addEventListener('click', () => {
+  if(currentLbItem) downloadOne(currentLbItem, currentLbItem.idx, lbDl);
+});
 
 function openLightbox(it, idx){
+  currentLbItem = { ...it, idx };
   lbFrame.innerHTML = '';
   lbFrame.appendChild(bgEl(it.cls));
   lbCaption.textContent = `#${String(idx).padStart(2,'0')} · ${it.name} · ${it.palette}`;
@@ -281,81 +358,69 @@ function openLightbox(it, idx){
 function closeLightbox(){
   lightbox.classList.remove('open');
   lbFrame.innerHTML = '';
+  currentLbItem = null;
 }
 
 /* ======================================================
-   TWEAKS
+   EXPORT — 1920x1200 PNG via offscreen stage + html-to-image
    ====================================================== */
-const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
-  "grain": 0.23,
-  "warm": 0.26,
-  "vignette": 0.5,
-  "desat": 0.12,
-  "paper": 0.18,
-  "textSafe": false
-}/*EDITMODE-END*/;
+const stage = document.getElementById('export-stage');
+const toast = document.getElementById('toast');
 
-const state = { ...TWEAK_DEFAULTS };
+function showToast(msg, ms = 2200){
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => toast.classList.remove('show'), ms);
+}
 
-function applyState(){
-  const r = document.documentElement.style;
-  r.setProperty('--patina-grain', state.grain);
-  r.setProperty('--patina-warm', state.warm);
-  r.setProperty('--patina-vignette', state.vignette);
-  r.setProperty('--patina-desat', state.desat);
-  r.setProperty('--patina-paper', state.paper);
-  document.body.classList.toggle('show-textsafe', state.textSafe);
-  document.getElementById('v-grain').textContent = state.grain.toFixed(2);
-  document.getElementById('v-warm').textContent = state.warm.toFixed(2);
-  document.getElementById('v-vign').textContent = state.vignette.toFixed(2);
-  document.getElementById('v-desat').textContent = state.desat.toFixed(2);
-  document.getElementById('v-paper').textContent = state.paper.toFixed(2);
-  document.getElementById('t-textsafe').textContent = state.textSafe ? 'On' : 'Off';
+function slugify(name){
+  return name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 }
-function persist(){
-  window.parent.postMessage({ type:'__edit_mode_set_keys', edits: state }, '*');
-}
-function bindSlider(id, key, parse = parseFloat){
-  const el = document.getElementById(id);
-  el.value = state[key];
-  el.addEventListener('input', () => {
-    state[key] = parse(el.value);
-    applyState(); persist();
+
+async function renderToBlob(cls){
+  stage.innerHTML = '';
+  const el = bgEl(cls);
+  stage.appendChild(el);
+  // Let styles settle
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+  const blob = await htmlToImage.toBlob(el, {
+    width: 1920,
+    height: 1200,
+    pixelRatio: 1,
+    cacheBust: true,
+    backgroundColor: '#0a0807',
   });
+  stage.innerHTML = '';
+  return blob;
 }
-bindSlider('t-grain','grain');
-bindSlider('t-warm','warm');
-bindSlider('t-vign','vignette');
-bindSlider('t-desat','desat');
-bindSlider('t-paper','paper');
 
-document.getElementById('t-textsafe').addEventListener('click', () => {
-  state.textSafe = !state.textSafe;
-  applyState(); persist();
-});
-document.getElementById('t-reset').addEventListener('click', () => {
-  Object.assign(state, TWEAK_DEFAULTS);
-  document.getElementById('t-grain').value = state.grain;
-  document.getElementById('t-warm').value = state.warm;
-  document.getElementById('t-vign').value = state.vignette;
-  document.getElementById('t-desat').value = state.desat;
-  document.getElementById('t-paper').value = state.paper;
-  applyState(); persist();
-});
-applyState();
+function triggerDownload(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
-/* ======================================================
-   EDIT MODE PROTOCOL
-   ====================================================== */
-window.addEventListener('message', (e) => {
-  if(!e.data || typeof e.data !== 'object') return;
-  if(e.data.type === '__activate_edit_mode'){
-    document.getElementById('tweaks').classList.add('open');
-  } else if(e.data.type === '__deactivate_edit_mode'){
-    document.getElementById('tweaks').classList.remove('open');
+async function downloadOne(it, idx, btn){
+  if(btn){ btn.disabled = true; btn.dataset._orig = btn.textContent; btn.textContent = '…'; }
+  showToast(`Rendering ${it.name}…`, 3500);
+  try{
+    const blob = await renderToBlob(it.cls);
+    const filename = `jc-bg-${String(idx).padStart(2,'0')}-${slugify(it.name)}.png`;
+    triggerDownload(blob, filename);
+    showToast(`Downloaded ${filename}`, 2000);
+  }catch(err){
+    console.error(err);
+    showToast('Export failed — see console', 2800);
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = btn.dataset._orig || '↓ PNG'; }
   }
-});
-window.parent.postMessage({ type:'__edit_mode_available' }, '*');
+}
 </script>
 
 </body>

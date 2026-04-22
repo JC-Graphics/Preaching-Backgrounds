@@ -1,0 +1,1079 @@
+/* =============================================================
+   PATINA ENGINE
+   Every background composites through these layers:
+   base → texture → brushwork → haze → vignette → grain
+   Tunable via CSS vars on the root.
+   ============================================================= */
+
+:root{
+  --patina-grain: 0.22;      /* 0..1 grain intensity */
+  --patina-warm: 0.14;       /* 0..1 amber wash */
+  --patina-vignette: 0.55;   /* 0..1 vignette depth */
+  --patina-desat: 0.12;      /* 0..1 desaturation */
+  --patina-paper: 0.18;      /* 0..1 paper texture opacity */
+}
+
+.bg{
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/10;
+  overflow: hidden;
+  isolation: isolate;
+  background: #0a0807;
+  filter: saturate(calc(1 - var(--patina-desat)));
+}
+
+/* layer helpers — all absolutely positioned, full-bleed */
+.bg > .l{
+  position:absolute; inset:0;
+  pointer-events:none;
+}
+
+/* 1. GRAIN — SVG turbulence repeated */
+.bg::after{
+  content:"";
+  position:absolute; inset:-2%;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch' seed='7'/><feColorMatrix values='0 0 0 0 0.1  0 0 0 0 0.09  0 0 0 0 0.08  0 0 0 1.2 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-size: 320px 320px;
+  mix-blend-mode: overlay;
+  opacity: var(--patina-grain);
+  z-index: 90;
+  pointer-events:none;
+}
+
+/* 2. VIGNETTE */
+.bg::before{
+  content:"";
+  position:absolute; inset:0;
+  background: radial-gradient(ellipse at center,
+    transparent 40%,
+    rgba(0,0,0,calc(var(--patina-vignette) * 0.35)) 70%,
+    rgba(0,0,0,calc(var(--patina-vignette) * 0.95)) 100%);
+  z-index: 80;
+  pointer-events:none;
+}
+
+/* 3. WARM TONAL SHIFT — soft amber over everything */
+.bg .warm{
+  background: radial-gradient(ellipse at 30% 20%,
+    rgba(255, 180, 110, calc(var(--patina-warm) * 1.2)) 0%,
+    rgba(255, 150, 80, calc(var(--patina-warm) * 0.5)) 40%,
+    rgba(60, 30, 10, 0) 80%);
+  mix-blend-mode: soft-light;
+  z-index: 70;
+}
+
+/* 4. PAPER TEXTURE — larger low-freq noise as "surface" */
+.bg .paper{
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='0.012 0.02' numOctaves='3' seed='3'/><feColorMatrix values='0 0 0 0 0.85  0 0 0 0 0.82  0 0 0 0 0.75  0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23p)'/></svg>");
+  background-size: cover;
+  mix-blend-mode: multiply;
+  opacity: var(--patina-paper);
+  z-index: 60;
+}
+
+/* 5. TEXT-SAFE ZONE scrim — toggleable. Top third. */
+.bg .textsafe{
+  position:absolute; inset:0;
+  background: linear-gradient(to bottom,
+    rgba(0,0,0,0.55) 0%,
+    rgba(0,0,0,0.35) 25%,
+    rgba(0,0,0,0) 40%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  z-index: 75;
+  pointer-events:none;
+}
+body.show-textsafe .bg .textsafe{ opacity: 1; }
+
+/* Optional: show a faint guide line where text would sit */
+body.show-textsafe .bg .textsafe::after{
+  content:"";
+  position:absolute; left:8%; right:8%; top:8%; height:25%;
+  border: 1px dashed rgba(255,255,255,0.25);
+  border-radius: 2px;
+}
+
+/* ========== GALLERY LAYOUT ========== */
+
+html, body{
+  margin:0; padding:0;
+  background: #0f0d0b;
+  color: #e8dfd2;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+.app{
+  max-width: 1800px;
+  margin: 0 auto;
+  padding: 48px 40px 120px;
+}
+
+.hero{
+  display:flex; align-items:flex-end; justify-content:space-between;
+  gap: 40px;
+  padding: 8px 4px 32px;
+  border-bottom: 1px solid rgba(232,223,210,0.08);
+  margin-bottom: 40px;
+}
+.hero h1{
+  font-family: "Fraunces", "Cormorant Garamond", Georgia, serif;
+  font-weight: 300;
+  font-size: 56px;
+  letter-spacing: -0.02em;
+  margin:0 0 10px;
+  color: #f2e8d8;
+}
+.hero .sub{
+  color: #a99d89;
+  font-size: 14px;
+  max-width: 560px;
+  line-height: 1.55;
+}
+.hero .meta{
+  display:flex; gap:28px;
+  color: #a99d89;
+  font-size: 12px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.hero .meta b{
+  display:block;
+  color: #e8dfd2;
+  font-weight: 500;
+  font-size: 18px;
+  font-family: "Fraunces", serif;
+  text-transform: none;
+  letter-spacing: 0;
+  margin-top: 4px;
+}
+
+.section-head{
+  display:flex; align-items:baseline; gap:16px;
+  margin: 56px 0 20px;
+}
+.section-head .num{
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  color: #6b6255;
+  font-size: 12px;
+  letter-spacing: 0.15em;
+}
+.section-head h2{
+  font-family: "Fraunces", serif;
+  font-weight: 300;
+  font-size: 28px;
+  margin:0;
+  color: #e8dfd2;
+  letter-spacing: -0.01em;
+}
+.section-head .blurb{
+  color: #847a6a;
+  font-size: 13px;
+  font-style: italic;
+  margin-left: auto;
+  max-width: 420px;
+  text-align: right;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+}
+@media (max-width: 1200px){ .grid{ grid-template-columns: repeat(2, 1fr); } }
+
+.card{
+  position:relative;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+.card:hover{ transform: translateY(-2px); }
+.card .label{
+  display:flex; justify-content:space-between;
+  margin-top: 10px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #847a6a;
+}
+.card .label b{
+  color: #d6cbb7;
+  font-weight: 500;
+}
+
+/* ========== LIGHTBOX ========== */
+.lightbox{
+  position: fixed; inset:0;
+  background: rgba(8,6,4,0.96);
+  z-index: 1000;
+  display:none;
+  align-items:center; justify-content:center;
+  padding: 40px;
+}
+.lightbox.open{ display:flex; }
+.lightbox .frame{
+  width: 100%;
+  max-width: 1600px;
+  aspect-ratio: 16/10;
+  position:relative;
+}
+.lightbox .close{
+  position:absolute; top: 24px; right: 28px;
+  background: transparent;
+  border: 1px solid rgba(232,223,210,0.2);
+  color: #e8dfd2;
+  padding: 10px 18px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  cursor:pointer;
+  text-transform: uppercase;
+}
+.lightbox .close:hover{ border-color: #e8dfd2; }
+.lightbox .caption{
+  position:absolute; bottom: 24px; left: 28px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: #a99d89;
+  text-transform: uppercase;
+}
+
+/* ========== TWEAKS PANEL ========== */
+.tweaks{
+  position: fixed;
+  right: 20px; bottom: 20px;
+  width: 280px;
+  background: rgba(18,14,11,0.94);
+  border: 1px solid rgba(232,223,210,0.12);
+  padding: 18px;
+  z-index: 1100;
+  display:none;
+  backdrop-filter: blur(16px);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #d6cbb7;
+}
+.tweaks.open{ display:block; }
+.tweaks h3{
+  margin: 0 0 14px;
+  font-size: 11px;
+  color: #a99d89;
+  letter-spacing: 0.15em;
+}
+.tweaks .row{
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom: 12px;
+  gap: 10px;
+}
+.tweaks .row label{ flex:1; font-size: 10px; color:#a99d89;}
+.tweaks .row input[type=range]{
+  flex: 1.4;
+  accent-color: #d6a56e;
+}
+.tweaks .row span{ width: 32px; text-align:right; color: #e8dfd2; font-size: 10px;}
+.tweaks .toggle{
+  display:flex; justify-content:space-between; align-items:center;
+  padding: 8px 0;
+  border-top: 1px solid rgba(232,223,210,0.08);
+  margin-top: 10px;
+}
+.tweaks button{
+  background: transparent;
+  border: 1px solid rgba(232,223,210,0.25);
+  color: #e8dfd2;
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  cursor:pointer;
+  text-transform: uppercase;
+}
+.tweaks button:hover{ border-color: #d6a56e; color: #d6a56e; }
+
+/* ======================================================
+   BACKGROUND STYLES — each below is a named variant.
+   Applied by adding class to .bg wrapper.
+   ====================================================== */
+
+/* ---------- 1. COLOR FIELDS (Rothko-ish) ---------- */
+
+.cf-ember .base{
+  background:
+    radial-gradient(ellipse 120% 90% at 50% 110%, #8a2e12 0%, #3b1208 55%, #180603 100%);
+}
+.cf-oxblood .base{
+  background:
+    linear-gradient(170deg, #2a0a0a 0%, #4a130f 40%, #1a0504 100%);
+}
+.cf-indigo .base{
+  background:
+    radial-gradient(ellipse at 30% 100%, #2b3d6b 0%, #141c38 55%, #060a18 100%);
+}
+.cf-olive .base{
+  background:
+    linear-gradient(180deg, #3a3a20 0%, #1c1e10 50%, #0a0c05 100%);
+}
+.cf-bone .base{
+  background:
+    radial-gradient(ellipse at 50% 30%, #e9dfc8 0%, #b8a988 55%, #6b5f45 100%);
+}
+
+/* ---------- 2. PAINTERLY BRUSHWORK ---------- */
+
+.pt-black-ink .base{ background:#0a0807; }
+.pt-black-ink .brush{
+  background-image:
+    radial-gradient(ellipse 60% 30% at 50% 40%, rgba(40,25,15,0.6), transparent 70%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.008 0.04' numOctaves='3' seed='5'/><feDisplacementMap in='SourceGraphic' scale='40'/></filter></defs><rect x='0' y='550' width='1600' height='200' fill='rgb(38,22,12)' filter='url(%23b)' opacity='0.85'/><rect x='0' y='700' width='1600' height='120' fill='rgb(20,12,6)' filter='url(%23b)' opacity='0.7'/></svg>");
+  background-size: cover;
+  z-index: 10;
+}
+
+.pt-amber-sweep .base{ background: linear-gradient(180deg, #180a04 0%, #2a1408 100%); }
+.pt-amber-sweep .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.006 0.06' numOctaves='4' seed='12'/><feDisplacementMap in='SourceGraphic' scale='60'/></filter></defs><ellipse cx='800' cy='600' rx='900' ry='180' fill='rgb(180,90,30)' filter='url(%23b)' opacity='0.55'/><ellipse cx='700' cy='700' rx='800' ry='120' fill='rgb(120,50,20)' filter='url(%23b)' opacity='0.7'/></svg>");
+  background-size: cover;
+  z-index: 10;
+}
+
+.pt-crimson-stroke .base{ background:#100406; }
+.pt-crimson-stroke .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.01 0.08' numOctaves='3' seed='22'/><feDisplacementMap in='SourceGraphic' scale='50'/></filter></defs><rect x='0' y='500' width='1600' height='260' fill='rgb(90,20,20)' filter='url(%23b)' opacity='0.6'/><rect x='200' y='620' width='1300' height='80' fill='rgb(160,40,30)' filter='url(%23b)' opacity='0.45'/></svg>");
+  background-size: cover;
+  z-index: 10;
+}
+
+.pt-teal-wash .base{ background: linear-gradient(180deg, #031418 0%, #0a1f22 60%, #010809 100%); }
+.pt-teal-wash .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.005 0.05' numOctaves='4' seed='33'/><feDisplacementMap in='SourceGraphic' scale='70'/></filter></defs><rect x='0' y='400' width='1600' height='500' fill='rgb(30,80,90)' filter='url(%23b)' opacity='0.45'/></svg>");
+  background-size: cover;
+  z-index: 10;
+}
+
+.pt-dry-brush-bone .base{ background:#221a10; }
+.pt-dry-brush-bone .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.02 0.2' numOctaves='3' seed='41'/><feDisplacementMap in='SourceGraphic' scale='30'/></filter></defs><rect x='0' y='300' width='1600' height='500' fill='rgb(200,180,140)' filter='url(%23b)' opacity='0.22'/></svg>");
+  background-size: cover;
+  z-index: 10;
+}
+
+/* ---------- 3. LIGHT & HAZE ---------- */
+
+.lh-dusty-sun .base{
+  background:
+    radial-gradient(circle at 75% 25%, #f5c07a 0%, #a55e22 12%, #3a1a08 45%, #0a0402 100%);
+}
+.lh-dusty-sun .haze{
+  background: radial-gradient(circle at 75% 25%, rgba(255,220,160,0.35) 0%, transparent 40%);
+  z-index: 20;
+  filter: blur(30px);
+}
+
+.lh-window-light .base{
+  background: linear-gradient(125deg, #0a0604 0%, #0a0604 40%, #3a2614 70%, #8a5620 100%);
+}
+.lh-window-light .haze{
+  background:
+    linear-gradient(125deg, transparent 55%, rgba(255,200,140,0.25) 75%, rgba(255,220,170,0.4) 100%);
+  z-index: 20;
+  filter: blur(20px);
+}
+
+.lh-god-ray .base{ background: #060405; }
+.lh-god-ray .rays{
+  background: conic-gradient(from 200deg at 50% -10%,
+    transparent 0deg,
+    rgba(255,210,150,0.08) 8deg,
+    transparent 16deg,
+    rgba(255,210,150,0.12) 24deg,
+    transparent 32deg,
+    rgba(255,210,150,0.06) 40deg,
+    transparent 50deg);
+  mix-blend-mode: screen;
+  z-index: 20;
+  filter: blur(8px);
+}
+.lh-god-ray .base::after{
+  content:"";
+  position:absolute; inset:0;
+  background: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(255,190,120,0.35), transparent 70%);
+}
+
+.lh-bokeh-warm .base{ background: #0a0604; }
+.lh-bokeh-warm .bokeh{
+  background-image:
+    radial-gradient(circle 90px at 15% 70%, rgba(255,190,120,0.28), transparent 65%),
+    radial-gradient(circle 140px at 80% 30%, rgba(255,160,90,0.22), transparent 65%),
+    radial-gradient(circle 60px at 60% 80%, rgba(255,220,170,0.3), transparent 65%),
+    radial-gradient(circle 110px at 35% 25%, rgba(200,120,60,0.18), transparent 65%),
+    radial-gradient(circle 180px at 90% 90%, rgba(120,60,20,0.3), transparent 70%);
+  filter: blur(10px);
+  z-index: 20;
+}
+
+.lh-ember-glow .base{
+  background: radial-gradient(ellipse 80% 50% at 50% 100%, #c4521c 0%, #4a1708 35%, #0c0403 80%);
+}
+.lh-ember-glow .haze{
+  background-image:
+    radial-gradient(circle 3px at 20% 85%, rgba(255,200,120,0.9), transparent 70%),
+    radial-gradient(circle 2px at 40% 92%, rgba(255,180,90,0.8), transparent 70%),
+    radial-gradient(circle 4px at 65% 78%, rgba(255,210,140,0.8), transparent 70%),
+    radial-gradient(circle 2px at 80% 88%, rgba(255,190,100,0.7), transparent 70%),
+    radial-gradient(circle 3px at 30% 95%, rgba(255,200,120,0.85), transparent 70%),
+    radial-gradient(circle 5px at 55% 90%, rgba(255,180,90,0.6), transparent 70%);
+  filter: blur(1.5px);
+  z-index: 25;
+}
+
+/* ---------- 4. PAPER / FRESCO / PARCHMENT ---------- */
+
+.pf-parchment .base{
+  background:
+    radial-gradient(ellipse at 50% 40%, #e9d9b6 0%, #c4ad82 60%, #7a653f 100%);
+}
+.pf-parchment .paper{
+  opacity: calc(var(--patina-paper) * 3);
+}
+
+.pf-fresco-blue .base{
+  background: linear-gradient(175deg, #6a7a8a 0%, #4a5565 50%, #2a3240 100%);
+}
+.pf-fresco-blue .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.04 0.02' numOctaves='3' seed='7'/></filter></defs><rect width='100%' height='100%' fill='rgb(220,210,180)' filter='url(%23b)' opacity='0.22'/></svg>");
+  background-size: cover;
+  mix-blend-mode: overlay;
+  z-index: 10;
+}
+
+.pf-fresco-ochre .base{
+  background: linear-gradient(180deg, #c89658 0%, #8e5a28 50%, #402008 100%);
+}
+.pf-fresco-ochre .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.05 0.03' numOctaves='4' seed='14'/></filter></defs><rect width='100%' height='100%' fill='rgb(40,20,8)' filter='url(%23b)' opacity='0.35'/></svg>");
+  background-size: cover;
+  mix-blend-mode: multiply;
+  z-index: 10;
+}
+
+.pf-linen .base{
+  background: #d9c9a8;
+}
+.pf-linen .paper{
+  background-image:
+    repeating-linear-gradient(90deg, rgba(90,70,40,0.06) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(0deg, rgba(90,70,40,0.06) 0 1px, transparent 1px 3px),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='0.03' numOctaves='3' seed='3'/></filter><rect width='100%' height='100%' filter='url(%23p)' opacity='0.5'/></svg>");
+  opacity: 0.85;
+  mix-blend-mode: multiply;
+}
+
+.pf-weathered-scroll .base{
+  background:
+    radial-gradient(ellipse at 50% 50%, #b89a66 0%, #8c6c3a 50%, #3a2812 100%);
+}
+.pf-weathered-scroll .brush{
+  background-image:
+    radial-gradient(ellipse 30% 40% at 15% 25%, rgba(30,15,5,0.4), transparent 70%),
+    radial-gradient(ellipse 25% 35% at 85% 75%, rgba(30,15,5,0.5), transparent 70%),
+    radial-gradient(ellipse 20% 30% at 60% 15%, rgba(30,15,5,0.3), transparent 70%);
+  z-index: 10;
+}
+
+/* ---------- 5. MINERAL / STONE / CONCRETE ---------- */
+
+.ms-concrete .base{
+  background:
+    linear-gradient(160deg, #4a4238 0%, #2c2620 60%, #14100b 100%);
+}
+.ms-concrete .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='9'/><feColorMatrix values='0 0 0 0 0.3  0 0 0 0 0.27  0 0 0 0 0.24  0 0 0 1 0'/></filter></defs><rect width='100%' height='100%' filter='url(%23b)' opacity='0.35'/></svg>");
+  background-size: cover;
+  mix-blend-mode: overlay;
+  z-index: 10;
+}
+
+.ms-marble .base{
+  background: #1a1612;
+}
+.ms-marble .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.008 0.04' numOctaves='5' seed='2'/><feColorMatrix values='0 0 0 0 0.8  0 0 0 0 0.72  0 0 0 0 0.58  0 0 0 2 -0.5'/></filter></defs><rect width='100%' height='100%' filter='url(%23b)' opacity='0.3'/></svg>");
+  background-size: cover;
+  z-index: 10;
+}
+
+.ms-rust .base{
+  background:
+    radial-gradient(ellipse at 50% 50%, #7a3e18 0%, #4a2210 50%, #1a0c06 100%);
+}
+.ms-rust .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.03 0.05' numOctaves='4' seed='28'/><feColorMatrix values='0 0 0 0 0.4  0 0 0 0 0.15  0 0 0 0 0.05  0 0 0 1.2 -0.2'/></filter></defs><rect width='100%' height='100%' filter='url(%23b)' opacity='0.55'/></svg>");
+  background-size: cover;
+  mix-blend-mode: multiply;
+  z-index: 10;
+}
+
+.ms-slate .base{
+  background: linear-gradient(155deg, #2d3440 0%, #1a1f28 60%, #0a0d12 100%);
+}
+.ms-slate .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.5 0.02' numOctaves='3' seed='19'/><feColorMatrix values='0 0 0 0 0.6  0 0 0 0 0.65  0 0 0 0 0.7  0 0 0 0.5 -0.1'/></filter></defs><rect width='100%' height='100%' filter='url(%23b)' opacity='0.4'/></svg>");
+  background-size: cover;
+  mix-blend-mode: overlay;
+  z-index: 10;
+}
+
+.ms-copper .base{
+  background: linear-gradient(165deg, #8c5228 0%, #4a2a14 50%, #180a04 100%);
+}
+.ms-copper .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.015 0.08' numOctaves='4' seed='37'/></filter></defs><rect width='100%' height='100%' fill='rgb(80,160,130)' filter='url(%23b)' opacity='0.08'/></svg>");
+  background-size: cover;
+  mix-blend-mode: overlay;
+  z-index: 10;
+}
+
+/* ---------- 6. SMOKE / MIST / DUST ---------- */
+
+.sm-charcoal-smoke .base{ background: #0a0807; }
+.sm-charcoal-smoke .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.006 0.012' numOctaves='3' seed='11'/></filter></defs><rect width='100%' height='100%' fill='rgb(140,125,105)' filter='url(%23b)' opacity='0.45'/></svg>");
+  background-size: cover;
+  mix-blend-mode: screen;
+  filter: blur(2px);
+  z-index: 10;
+}
+
+.sm-dust-amber .base{
+  background: radial-gradient(ellipse at 50% 100%, #6a4a28 0%, #2a2018 50%, #080604 100%);
+}
+.sm-dust-amber .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.01 0.005' numOctaves='3' seed='17'/></filter></defs><rect width='100%' height='100%' fill='rgb(255,190,120)' filter='url(%23b)' opacity='0.2'/></svg>");
+  background-size: cover;
+  mix-blend-mode: screen;
+  filter: blur(8px);
+  z-index: 10;
+}
+
+.sm-fog-cool .base{
+  background: linear-gradient(180deg, #1a2028 0%, #0a0e14 100%);
+}
+.sm-fog-cool .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.004 0.008' numOctaves='4' seed='23'/></filter></defs><rect width='100%' height='100%' fill='rgb(200,210,220)' filter='url(%23b)' opacity='0.25'/></svg>");
+  background-size: cover;
+  mix-blend-mode: screen;
+  filter: blur(4px);
+  z-index: 10;
+}
+
+.sm-incense .base{
+  background:
+    radial-gradient(ellipse at 30% 100%, #5a3a20 0%, #1a0e06 60%, #0a0402 100%);
+}
+.sm-incense .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.003 0.02' numOctaves='4' seed='31'/></filter></defs><rect width='100%' height='100%' fill='rgb(230,200,160)' filter='url(%23b)' opacity='0.3'/></svg>");
+  background-size: cover;
+  mix-blend-mode: screen;
+  filter: blur(6px);
+  z-index: 10;
+}
+
+.sm-black-fog .base{
+  background: radial-gradient(ellipse at 50% 50%, #1a1612 0%, #080605 100%);
+}
+.sm-black-fog .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.005 0.01' numOctaves='5' seed='43'/></filter></defs><rect width='100%' height='100%' fill='rgb(90,75,55)' filter='url(%23b)' opacity='0.35'/></svg>");
+  background-size: cover;
+  mix-blend-mode: screen;
+  filter: blur(3px);
+  z-index: 10;
+}
+
+/* ---------- 7. GOD-RAYS / CATHEDRAL LIGHT ---------- */
+
+.gr-cathedral .base{
+  background: linear-gradient(180deg, #0a0604 0%, #1a0e06 50%, #2a1808 100%);
+}
+.gr-cathedral .rays{
+  background:
+    linear-gradient(105deg, transparent 45%, rgba(255,210,150,0.12) 48%, transparent 52%),
+    linear-gradient(98deg, transparent 55%, rgba(255,210,150,0.08) 60%, transparent 65%),
+    linear-gradient(112deg, transparent 35%, rgba(255,190,120,0.06) 40%, transparent 48%);
+  z-index: 20;
+  filter: blur(6px);
+}
+.gr-cathedral .haze{
+  background: radial-gradient(ellipse 70% 40% at 60% 20%, rgba(255,210,150,0.3), transparent 70%);
+  z-index: 18;
+  filter: blur(40px);
+}
+
+.gr-forest-light .base{
+  background: linear-gradient(180deg, #0a1408 0%, #1a2a12 40%, #2a3a1a 100%);
+}
+.gr-forest-light .rays{
+  background:
+    linear-gradient(95deg, transparent 20%, rgba(230,220,120,0.15) 25%, transparent 35%),
+    linear-gradient(88deg, transparent 45%, rgba(230,220,120,0.1) 50%, transparent 60%),
+    linear-gradient(102deg, transparent 65%, rgba(230,220,120,0.12) 72%, transparent 80%);
+  z-index: 20;
+  filter: blur(10px);
+  mix-blend-mode: screen;
+}
+
+.gr-sunburst .base{
+  background: radial-gradient(circle at 50% 50%, #d08850 0%, #6a3414 40%, #1a0a04 100%);
+}
+.gr-sunburst .rays{
+  background: conic-gradient(from 0deg at 50% 50%,
+    rgba(255,220,150,0.18) 0deg, transparent 15deg,
+    rgba(255,220,150,0.12) 30deg, transparent 45deg,
+    rgba(255,220,150,0.2) 60deg, transparent 75deg,
+    rgba(255,220,150,0.14) 90deg, transparent 105deg,
+    rgba(255,220,150,0.18) 120deg, transparent 135deg,
+    rgba(255,220,150,0.12) 150deg, transparent 165deg,
+    rgba(255,220,150,0.2) 180deg, transparent 195deg,
+    rgba(255,220,150,0.14) 210deg, transparent 225deg,
+    rgba(255,220,150,0.18) 240deg, transparent 255deg,
+    rgba(255,220,150,0.12) 270deg, transparent 285deg,
+    rgba(255,220,150,0.2) 300deg, transparent 315deg,
+    rgba(255,220,150,0.14) 330deg, transparent 345deg);
+  mix-blend-mode: screen;
+  z-index: 20;
+  filter: blur(2px);
+}
+
+.gr-backlit-blue .base{
+  background: linear-gradient(180deg, #0a1220 0%, #1a2640 50%, #0a1220 100%);
+}
+.gr-backlit-blue .rays{
+  background:
+    radial-gradient(ellipse 40% 100% at 50% 50%, rgba(180,200,255,0.25), transparent 70%);
+  z-index: 20;
+  filter: blur(20px);
+}
+.gr-backlit-blue .haze{
+  background:
+    linear-gradient(100deg, transparent 40%, rgba(180,200,255,0.08) 50%, transparent 60%);
+  z-index: 19;
+}
+
+/* ---------- 8. LANDSCAPE-ABSTRACT ---------- */
+
+.la-horizon-dawn .base{
+  background: linear-gradient(180deg,
+    #1a1430 0%,
+    #3a2840 25%,
+    #8a4820 50%,
+    #c88848 60%,
+    #2a1810 65%,
+    #0a0604 100%);
+}
+.la-horizon-dawn .haze{
+  background: linear-gradient(180deg, transparent 55%, rgba(0,0,0,0.4) 65%, transparent 75%);
+  z-index: 15;
+}
+
+.la-horizon-dusk .base{
+  background: linear-gradient(180deg,
+    #2a1838 0%,
+    #4a2040 25%,
+    #a84830 50%,
+    #c85020 55%,
+    #180a08 65%,
+    #050202 100%);
+}
+
+.la-sea-dark .base{
+  background: linear-gradient(180deg,
+    #1a2030 0%,
+    #2a3444 50%,
+    #0a1018 55%,
+    #000408 100%);
+}
+.la-sea-dark .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.02 0.001' numOctaves='3' seed='13'/></filter></defs><rect x='0' y='550' width='1600' height='450' fill='rgb(120,140,170)' filter='url(%23b)' opacity='0.25'/></svg>");
+  background-size: cover;
+  mix-blend-mode: screen;
+  z-index: 10;
+}
+
+.la-mountain-haze .base{
+  background: linear-gradient(180deg,
+    #3a3a44 0%,
+    #2a2a34 40%,
+    #1a1a22 70%,
+    #0a0a10 100%);
+}
+.la-mountain-haze .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.003 0.015' numOctaves='2' seed='8'/></filter></defs><rect x='0' y='450' width='1600' height='180' fill='rgb(40,40,50)' filter='url(%23b)' opacity='0.7'/><rect x='0' y='550' width='1600' height='180' fill='rgb(20,20,28)' filter='url(%23b)' opacity='0.6'/></svg>");
+  background-size: cover;
+  z-index: 10;
+}
+
+.la-water-surface .base{
+  background:
+    radial-gradient(ellipse at 50% 30%, #3a4050 0%, #1a1f28 60%, #050810 100%);
+}
+.la-water-surface .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='turbulence' baseFrequency='0.01 0.05' numOctaves='3' seed='27'/></filter></defs><rect width='100%' height='100%' fill='rgb(150,170,190)' filter='url(%23b)' opacity='0.2'/></svg>");
+  background-size: cover;
+  mix-blend-mode: overlay;
+  z-index: 10;
+}
+
+/* ======================================================
+   EXTENDED FAMILIES — added per feedback
+   More Smoke/Mist/Dust variations, more Landscape,
+   new Aurora Mesh family.
+   ====================================================== */
+
+/* ---------- SMOKE / MIST / DUST — EXTENDED ---------- */
+
+.sm-mist-teal .base{
+  background: linear-gradient(180deg, #0a1a1e 0%, #0a1418 60%, #020608 100%);
+}
+.sm-mist-teal .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.005 0.01' numOctaves='4' seed='51'/></filter></defs><rect width='100%' height='100%' fill='rgb(120,180,180)' filter='url(%23b)' opacity='0.3'/></svg>");
+  background-size: cover;
+  mix-blend-mode: screen;
+  filter: blur(5px);
+  z-index: 10;
+}
+
+.sm-violet-haze .base{
+  background: linear-gradient(165deg, #1a1028 0%, #0f0a1a 60%, #050308 100%);
+}
+.sm-violet-haze .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.006 0.015' numOctaves='4' seed='57'/></filter></defs><rect width='100%' height='100%' fill='rgb(180,140,220)' filter='url(%23b)' opacity='0.32'/></svg>");
+  background-size: cover;
+  mix-blend-mode: screen;
+  filter: blur(7px);
+  z-index: 10;
+}
+
+.sm-sage-mist .base{
+  background: linear-gradient(180deg, #141a14 0%, #0a0f0a 100%);
+}
+.sm-sage-mist .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.004 0.01' numOctaves='4' seed='61'/></filter></defs><rect width='100%' height='100%' fill='rgb(160,180,140)' filter='url(%23b)' opacity='0.28'/></svg>");
+  background-size: cover;
+  mix-blend-mode: screen;
+  filter: blur(6px);
+  z-index: 10;
+}
+
+.sm-blue-hour .base{
+  background: linear-gradient(180deg, #0a1830 0%, #050d1a 60%, #01040a 100%);
+}
+.sm-blue-hour .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.003 0.008' numOctaves='4' seed='67'/></filter></defs><rect width='100%' height='100%' fill='rgb(130,170,230)' filter='url(%23b)' opacity='0.3'/></svg>");
+  background-size: cover;
+  mix-blend-mode: screen;
+  filter: blur(5px);
+  z-index: 10;
+}
+
+.sm-dust-rose .base{
+  background: linear-gradient(180deg, #1a0e14 0%, #0a0608 100%);
+}
+.sm-dust-rose .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.005 0.012' numOctaves='4' seed='71'/></filter></defs><rect width='100%' height='100%' fill='rgb(220,170,180)' filter='url(%23b)' opacity='0.22'/></svg>");
+  background-size: cover;
+  mix-blend-mode: screen;
+  filter: blur(6px);
+  z-index: 10;
+}
+
+.sm-river-fog .base{
+  background: linear-gradient(180deg, #0e1418 0%, #161e22 50%, #0a1012 100%);
+}
+.sm-river-fog .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.02 0.002' numOctaves='3' seed='73'/></filter></defs><rect x='0' y='300' width='1600' height='500' fill='rgb(200,215,225)' filter='url(%23b)' opacity='0.25'/></svg>");
+  background-size: cover;
+  mix-blend-mode: screen;
+  filter: blur(3px);
+  z-index: 10;
+}
+
+.sm-bronze-smoke .base{
+  background: linear-gradient(170deg, #1a140c 0%, #0c0804 100%);
+}
+.sm-bronze-smoke .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.005 0.015' numOctaves='4' seed='77'/></filter></defs><rect width='100%' height='100%' fill='rgb(200,170,120)' filter='url(%23b)' opacity='0.22'/></svg>");
+  background-size: cover;
+  mix-blend-mode: screen;
+  filter: blur(4px);
+  z-index: 10;
+}
+
+/* ---------- LANDSCAPE — EXTENDED ---------- */
+
+.la-cold-horizon .base{
+  background: linear-gradient(180deg,
+    #2a3a4a 0%, #3a4a5a 35%, #1a242c 50%, #0a1014 100%);
+}
+
+.la-violet-hills .base{
+  background: linear-gradient(180deg,
+    #1a1428 0%, #2a2440 35%, #1a1830 55%, #0a0818 100%);
+}
+.la-violet-hills .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.003 0.015' numOctaves='2' seed='83'/></filter></defs><rect x='0' y='500' width='1600' height='180' fill='rgb(30,25,50)' filter='url(%23b)' opacity='0.6'/><rect x='0' y='600' width='1600' height='180' fill='rgb(15,12,30)' filter='url(%23b)' opacity='0.55'/></svg>");
+  background-size: cover;
+  z-index: 10;
+}
+
+.la-foggy-pines .base{
+  background: linear-gradient(180deg, #1a2420 0%, #0e1612 50%, #050806 100%);
+}
+.la-foggy-pines .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.008 0.04' numOctaves='3' seed='89'/></filter></defs><rect x='0' y='500' width='1600' height='400' fill='rgb(10,18,12)' filter='url(%23b)' opacity='0.8'/></svg>");
+  background-size: cover;
+  z-index: 10;
+}
+.la-foggy-pines .haze{
+  background: linear-gradient(180deg, transparent 30%, rgba(200,210,200,0.2) 55%, transparent 80%);
+  filter: blur(20px);
+  z-index: 15;
+}
+
+.la-ocean-pale .base{
+  background: linear-gradient(180deg,
+    #8a98a8 0%, #6a7a8a 35%, #4a5a68 50%, #2a3440 100%);
+}
+.la-ocean-pale .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.04 0.002' numOctaves='3' seed='91'/></filter></defs><rect x='0' y='500' width='1600' height='500' fill='rgb(180,195,210)' filter='url(%23b)' opacity='0.25'/></svg>");
+  background-size: cover;
+  mix-blend-mode: overlay;
+  z-index: 10;
+}
+
+.la-dune .base{
+  background: linear-gradient(180deg,
+    #5a4838 0%, #3a2e22 50%, #1a1410 100%);
+}
+.la-dune .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.002 0.02' numOctaves='3' seed='97'/></filter></defs><rect width='100%' height='100%' fill='rgb(120,95,65)' filter='url(%23b)' opacity='0.35'/></svg>");
+  background-size: cover;
+  mix-blend-mode: overlay;
+  z-index: 10;
+}
+
+.la-glacier .base{
+  background: linear-gradient(180deg,
+    #b8c8d4 0%, #7a8a98 35%, #3a4a58 55%, #12181e 100%);
+}
+.la-glacier .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.008 0.06' numOctaves='4' seed='103'/></filter></defs><rect width='100%' height='100%' fill='rgb(90,110,130)' filter='url(%23b)' opacity='0.22'/></svg>");
+  background-size: cover;
+  mix-blend-mode: overlay;
+  z-index: 10;
+}
+
+.la-valley-dawn .base{
+  background: linear-gradient(180deg,
+    #4a4a6a 0%, #6a5a70 25%, #8a6a5a 45%, #3a2a24 60%, #0a0806 100%);
+}
+.la-valley-dawn .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.004 0.02' numOctaves='2' seed='107'/></filter></defs><rect x='0' y='480' width='1600' height='160' fill='rgb(25,20,28)' filter='url(%23b)' opacity='0.8'/><rect x='0' y='580' width='1600' height='120' fill='rgb(10,8,14)' filter='url(%23b)' opacity='0.8'/></svg>");
+  background-size: cover;
+  z-index: 10;
+}
+
+.la-forest-canopy .base{
+  background: radial-gradient(ellipse at 50% 30%, #2a3a28 0%, #141c12 60%, #050806 100%);
+}
+.la-forest-canopy .brush{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.06 0.08' numOctaves='4' seed='113'/></filter></defs><rect width='100%' height='100%' fill='rgb(40,60,35)' filter='url(%23b)' opacity='0.4'/></svg>");
+  background-size: cover;
+  mix-blend-mode: multiply;
+  z-index: 10;
+}
+
+/* ---------- AURORA MESH (new family) ---------- */
+/* Painterly blended mesh gradients. Soft cool-pastel bloom
+   on a near-black ground. Uses multiple radial gradients at
+   different positions with screen blending to fake a mesh gradient. */
+
+.au-base{
+  background: #060608;
+}
+.au-base .brush{
+  filter: blur(60px);
+  mix-blend-mode: screen;
+  z-index: 12;
+}
+.au-base .haze{
+  filter: blur(120px);
+  mix-blend-mode: screen;
+  z-index: 13;
+  opacity: 0.8;
+}
+
+.au-polar .base{ background: #050810; }
+.au-polar .brush{
+  background-image:
+    radial-gradient(ellipse 45% 40% at 20% 30%, rgba(80,180,200,0.65), transparent 65%),
+    radial-gradient(ellipse 55% 35% at 75% 25%, rgba(120,90,200,0.55), transparent 65%),
+    radial-gradient(ellipse 40% 30% at 50% 80%, rgba(60,140,180,0.45), transparent 70%);
+  filter: blur(80px);
+  mix-blend-mode: screen;
+  z-index: 12;
+}
+
+.au-dusk-mesh .base{ background: #0a0612; }
+.au-dusk-mesh .brush{
+  background-image:
+    radial-gradient(ellipse 50% 45% at 30% 35%, rgba(200,100,160,0.55), transparent 65%),
+    radial-gradient(ellipse 55% 40% at 80% 70%, rgba(90,80,200,0.55), transparent 65%),
+    radial-gradient(ellipse 45% 35% at 55% 15%, rgba(230,160,130,0.4), transparent 70%);
+  filter: blur(80px);
+  mix-blend-mode: screen;
+  z-index: 12;
+}
+
+.au-jade-drift .base{ background: #040a0a; }
+.au-jade-drift .brush{
+  background-image:
+    radial-gradient(ellipse 50% 40% at 25% 30%, rgba(60,200,170,0.55), transparent 65%),
+    radial-gradient(ellipse 55% 45% at 75% 70%, rgba(40,120,160,0.55), transparent 65%),
+    radial-gradient(ellipse 40% 30% at 50% 90%, rgba(140,200,180,0.35), transparent 70%);
+  filter: blur(80px);
+  mix-blend-mode: screen;
+  z-index: 12;
+}
+
+.au-lilac .base{ background: #0a0812; }
+.au-lilac .brush{
+  background-image:
+    radial-gradient(ellipse 45% 40% at 30% 30%, rgba(180,150,230,0.55), transparent 65%),
+    radial-gradient(ellipse 55% 45% at 70% 60%, rgba(120,100,200,0.5), transparent 65%),
+    radial-gradient(ellipse 40% 35% at 85% 20%, rgba(220,180,220,0.4), transparent 70%);
+  filter: blur(80px);
+  mix-blend-mode: screen;
+  z-index: 12;
+}
+
+.au-seafoam .base{ background: #04080a; }
+.au-seafoam .brush{
+  background-image:
+    radial-gradient(ellipse 50% 40% at 20% 40%, rgba(120,220,200,0.55), transparent 65%),
+    radial-gradient(ellipse 55% 45% at 80% 25%, rgba(80,150,180,0.5), transparent 65%),
+    radial-gradient(ellipse 40% 30% at 60% 85%, rgba(170,220,210,0.3), transparent 70%);
+  filter: blur(80px);
+  mix-blend-mode: screen;
+  z-index: 12;
+}
+
+.au-midnight-rose .base{ background: #080610; }
+.au-midnight-rose .brush{
+  background-image:
+    radial-gradient(ellipse 50% 40% at 25% 70%, rgba(200,120,150,0.55), transparent 65%),
+    radial-gradient(ellipse 55% 45% at 75% 30%, rgba(80,100,180,0.55), transparent 65%),
+    radial-gradient(ellipse 40% 35% at 50% 50%, rgba(140,90,150,0.3), transparent 70%);
+  filter: blur(80px);
+  mix-blend-mode: screen;
+  z-index: 12;
+}
+
+.au-honey-cool .base{ background: #080808; }
+.au-honey-cool .brush{
+  background-image:
+    radial-gradient(ellipse 50% 40% at 20% 30%, rgba(230,190,110,0.45), transparent 65%),
+    radial-gradient(ellipse 55% 45% at 80% 70%, rgba(80,140,180,0.5), transparent 65%),
+    radial-gradient(ellipse 40% 30% at 55% 90%, rgba(190,160,130,0.3), transparent 70%);
+  filter: blur(80px);
+  mix-blend-mode: screen;
+  z-index: 12;
+}
+
+.au-arctic-pink .base{ background: #040810; }
+.au-arctic-pink .brush{
+  background-image:
+    radial-gradient(ellipse 50% 45% at 30% 30%, rgba(230,170,200,0.5), transparent 65%),
+    radial-gradient(ellipse 55% 40% at 75% 65%, rgba(100,170,220,0.5), transparent 65%),
+    radial-gradient(ellipse 40% 35% at 50% 15%, rgba(190,210,230,0.3), transparent 70%);
+  filter: blur(80px);
+  mix-blend-mode: screen;
+  z-index: 12;
+}
+
+.au-mountain-aurora .base{
+  background: linear-gradient(180deg, #050810 0%, #0a1018 60%, #02050a 100%);
+}
+.au-mountain-aurora .brush{
+  background-image:
+    radial-gradient(ellipse 70% 25% at 50% 30%, rgba(80,200,180,0.4), transparent 70%),
+    radial-gradient(ellipse 60% 20% at 30% 20%, rgba(140,90,200,0.35), transparent 70%);
+  filter: blur(60px);
+  mix-blend-mode: screen;
+  z-index: 12;
+}
+.au-mountain-aurora .haze{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'><defs><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.004 0.02' numOctaves='2' seed='121'/></filter></defs><rect x='0' y='520' width='1600' height='180' fill='rgb(10,15,20)' filter='url(%23b)' opacity='0.85'/><rect x='0' y='620' width='1600' height='180' fill='rgb(4,6,10)' filter='url(%23b)' opacity='0.85'/></svg>");
+  background-size: cover;
+  filter: none;
+  mix-blend-mode: normal;
+  z-index: 14;
+}
+
+.au-deep-ocean .base{ background: #02060a; }
+.au-deep-ocean .brush{
+  background-image:
+    radial-gradient(ellipse 60% 50% at 50% 50%, rgba(40,120,180,0.55), transparent 65%),
+    radial-gradient(ellipse 40% 35% at 20% 20%, rgba(20,180,200,0.4), transparent 70%),
+    radial-gradient(ellipse 40% 35% at 80% 80%, rgba(60,80,160,0.4), transparent 70%);
+  filter: blur(90px);
+  mix-blend-mode: screen;
+  z-index: 12;
+}
+
+/* section-color tinted label chips */
+.chip{
+  display:inline-block;
+  width: 8px; height: 8px; border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
